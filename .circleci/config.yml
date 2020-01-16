@@ -1,8 +1,32 @@
 version: 2.1
+
+orbs:
+  heroku: circleci/heroku@0.0.10
+  docker: circleci/docker@0.5.20
+
 jobs:
-  build:
-    docker:
-    - image: circleci/node:4.8.2 # the primary container, where your job's commands are run
+  deploy-sonar:
+    executor: docker/docker
     steps:
-    - checkout # check out the code in the project directory
-    - run: echo "hello world" # run the `echo` command
+    - setup_remote_docker
+    - heroku/install
+    - run:
+        name: login heroku container
+        command: heroku container:login
+    - run:
+        name: pull sonarqube image
+        command: docker pull sonarqube
+    - run:
+        name: docker tag & push image
+        command: |
+          docker tag sonarqube registry.heroku.com/sonarqube-regional-it-team/web:latest
+          docker push registry.heroku.com/sonarqube-regional-it-team/web
+    - run:
+        name: deploy with image
+        command: heroku container:release -a sonarqube-regional-it-team web
+
+workflows:
+  version: 2
+  build-deploy:
+    jobs:
+    - deploy-sonar
